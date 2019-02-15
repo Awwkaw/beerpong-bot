@@ -38,6 +38,8 @@ bool powerAngleToggle = 0;
 bool firePowerUpState = 0;
 bool firePowerDownState = 0;
 int fireAngle = 100;
+const int maxFireAngle = 130;
+const int minFireAngle = 40;
 int fireMaxSpeed = 1800;
 int fireAccel = 14000;
 int currentAngle = 0;
@@ -47,10 +49,12 @@ const int currentAngleHigh = 50;
 byte redLEDStates = B00000000;
 byte GreenLEDStates = B00000000;
 
-int redPinsOn = 0
+int redPinsOn = 0;
 int greenPinsOn = 0;
-int oRedPinsOn = 0
+int oRedPinsOn = 0;
 int oGreenPinsOn = 0;
+int pinWriteNumber = 0;
+byte pinByteLight;
 
 void setup() {
   // put your setup code here, to run once:
@@ -87,6 +91,7 @@ void setup() {
   turnMotor.setAcceleration(10);
   turnMotor.setCurrentPosition(0);
   Serial.begin(19200);
+  getAndSetPinsOn();
   
   
 }
@@ -114,9 +119,8 @@ void loop() {
   ////Serial.println(endtime-firetime);
   ////Serial.print("totaltime: ");
   ////Serial.println(endtime-uptime);
-  Serial.println(fireMaxSpeed);
-  Serial.println(fireAngle);
-  Serial.println("--------");
+  //Serial.println(fireMaxSpeed);
+  //Serial.println(fireAngle);
  
 }
 
@@ -132,6 +136,7 @@ void updateStates() {
   Serial.println(firePowerDownState);
   Serial.println(turnLState);
   Serial.println(turnRState);
+  Serial.println(fireBState);
 }
 
 void fireInTheHall() {
@@ -144,12 +149,13 @@ void fireInTheHall() {
   delay(500);
   fireMotor.setMaxSpeed(20);
 
-  fireMotor.moveTo(0);
+  fireMotor.moveTo(fireAngle/2);
   fireMotor.runToPosition();
-
   fireMotor.setMaxSpeed(fireMaxSpeed);
   digitalWrite(fireDriverPin,HIGH);
   digitalWrite(turnDriverPin,HIGH);
+  fireMotor.moveTo(0);
+  fireMotor.runToPosition();
 }
 
 
@@ -195,29 +201,33 @@ void tuneThePower(){
 */
   if (powerAngleToggle == HIGH){
     if (firePowerUpState == LOW ){
-      if (fireAngle < 100){
+      if (fireAngle < maxFireAngle){
         fireAngle++;    
         getAndSetPinsOn();
+        delay(20);
       }
     }
     if (firePowerDownState == LOW){
-      if(fireAngle > 0){
+      if(fireAngle > minFireAngle){
         fireAngle--;    
         getAndSetPinsOn();
+        delay(20);
       }
     }
   }
   else{
     if (firePowerUpState == LOW ){
-      if (fireMaxSpeed < 1790){
+      if (fireMaxSpeed <= 1790){
         fireMaxSpeed += 10;    
         getAndSetPinsOn();
+        delay(20);
       }
     }
     if (firePowerDownState == LOW){
-      if(fireMaxSpeed > 910){
+      if(fireMaxSpeed >= 910){
         fireMaxSpeed -= 10;    
         getAndSetPinsOn();
+        delay(20);
       }
     }
   }
@@ -225,18 +235,25 @@ void tuneThePower(){
 void getAndSetPinsOn(){
   
   oRedPinsOn = redPinsOn;
-  oGreenPinsOn = greenPins;
+  oGreenPinsOn = greenPinsOn;
   redPinsOn = round(8*(fireMaxSpeed-900)/900.0);
-  greenPinsOn = round(8*fireAngle/100.0);
+  greenPinsOn = round(8*(fireAngle-minFireAngle)/(maxFireAngle-minFireAngle));
 
   if (oRedPinsOn != redPinsOn){
+
+    //Serial.println(firePower);
+    //Serial.println(redPinsOn);
+    //Serial.println((1 << redPinsOn)-1,BIN);
+    //Serial.println("--------");
+
     digitalWrite(redLatchPin,LOW);
-    shiftOut(redDataPin,redClockPin,MSBFIRST,redPinsOn);
+    shiftOut(redDataPin,redClockPin,MSBFIRST,(1 << redPinsOn)-1);
     digitalWrite(redLatchPin,HIGH);
   }
   else if (oGreenPinsOn != greenPinsOn){
+
     digitalWrite(greenLatchPin,LOW);
-    shiftOut(greenDataPin,greenClockPin,MSBFIRST,greenPinsOn);
+    shiftOut(greenDataPin,greenClockPin,MSBFIRST,(1 << greenPinsOn)-1);
     digitalWrite(greenLatchPin,HIGH);
   }
 }
